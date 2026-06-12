@@ -4,128 +4,255 @@
   <meta charset="UTF-8" />
   <title>Motor Health Assessment AI</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
-    h1 { color: #1a1a2e; font-size: 1.6rem; }
-    .card { background: white; border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 0.85rem; color: #444; }
-    input, select { width: 100%; padding: 9px; margin-bottom: 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
-    button { width: 100%; padding: 12px; background: #1f6feb; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-    button:hover { background: #388bfd; }
-    .pass { color: green; font-weight: bold; }
-    .fail { color: red; font-weight: bold; }
-    .check { background: #f9f9f9; border-left: 4px solid #ccc; padding: 10px 14px; margin-bottom: 10px; border-radius: 4px; }
-    .check.pass-card { border-left-color: green; }
-    .check.fail-card { border-left-color: red; }
-    #aiReport { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.7; background: #f9f9f9; padding: 16px; border-radius: 8px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; min-height: 100vh; padding: 30px 16px; }
+    .container { max-width: 780px; margin: 0 auto; }
+
+    h1 { color: #1a1a2e; font-size: 1.7rem; text-align: center; }
+    .subtitle { text-align: center; color: #666; font-size: 0.85rem; margin: 6px 0 24px; }
+
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+
+    label { display: block; font-weight: bold; font-size: 0.82rem; color: #444;
+            text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+    .hint { font-size: 0.72rem; color: #999; margin-bottom: 10px; }
+    input, select { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd;
+                    border-radius: 8px; font-size: 0.95rem; margin-bottom: 6px;
+                    transition: border-color 0.2s; }
+    input:focus, select:focus { outline: none; border-color: #1f6feb; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width:560px){ .grid { grid-template-columns: 1fr; } }
+
+    .btn { width: 100%; padding: 13px; background: #1f6feb; color: #fff;
+           border: none; border-radius: 10px; font-size: 1rem; font-weight: bold;
+           cursor: pointer; margin-top: 8px; transition: background 0.2s; }
+    .btn:hover { background: #388bfd; }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* loader */
+    .loader-wrap { text-align: center; padding: 30px; display: none; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0;
+               border-top-color: #1f6feb; border-radius: 50%;
+               animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-steps { font-size: 0.85rem; color: #666; }
+    .loader-steps span { display: block; margin: 4px 0; opacity: 0.4; transition: opacity 0.3s; }
+    .loader-steps span.active { opacity: 1; color: #1f6feb; font-weight: bold; }
+
+    /* overall banner */
+    .banner { border-radius: 10px; padding: 16px 20px; margin-bottom: 18px;
+              display: flex; align-items: center; gap: 14px; }
+    .banner.healthy  { background: #d4edda; border: 1.5px solid #28a745; }
+    .banner.marginal { background: #fff3cd; border: 1.5px solid #ffc107; }
+    .banner.critical { background: #f8d7da; border: 1.5px solid #dc3545; }
+    .banner-icon { font-size: 2.2rem; }
+    .banner-title { font-size: 1.2rem; font-weight: bold; }
+    .banner.healthy  .banner-title { color: #155724; }
+    .banner.marginal .banner-title { color: #856404; }
+    .banner.critical .banner-title { color: #721c24; }
+    .banner-msg { font-size: 0.84rem; color: #555; margin-top: 3px; }
+
+    /* checks grid */
+    .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    @media(max-width:560px){ .checks { grid-template-columns: 1fr; } }
+    .check { border-radius: 8px; padding: 12px 14px; border: 1px solid #e0e0e0; background: #fafafa; }
+    .check.pass { border-left: 4px solid #28a745; }
+    .check.fail { border-left: 4px solid #dc3545; }
+    .check-name { font-size: 0.76rem; color: #777; margin-bottom: 6px; }
+    .check-row { display: flex; justify-content: space-between; align-items: center; }
+    .check-val { font-size: 1.2rem; font-weight: bold; color: #1a1a2e; }
+    .badge { font-size: 0.7rem; font-weight: bold; padding: 2px 10px;
+             border-radius: 20px; letter-spacing: 0.5px; }
+    .badge.pass { background: #d4edda; color: #155724; }
+    .badge.fail { background: #f8d7da; color: #721c24; }
+    .check-limit { font-size: 0.72rem; color: #aaa; margin-top: 4px; }
+    .pi-tag { font-size: 0.72rem; margin-top: 4px; font-weight: bold; }
+
+    /* AI report */
+    .ai-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .ai-header h3 { font-size: 1rem; color: #1a1a2e; }
+    .ai-badge { background: #e8f0fe; color: #1967d2; font-size: 0.72rem;
+                padding: 2px 10px; border-radius: 20px; font-weight: bold; }
+    .ai-report { background: #f9f9f9; border: 1px solid #e8e8e8; border-radius: 8px;
+                 padding: 18px; font-size: 0.875rem; line-height: 1.8;
+                 white-space: pre-wrap; color: #333; }
+
     #results { display: none; }
-    .overall { padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 1.1rem; }
-    .healthy  { background: #d4edda; color: #155724; }
-    .marginal { background: #fff3cd; color: #856404; }
-    .critical { background: #f8d7da; color: #721c24; }
-    #loader { display:none; text-align:center; padding: 20px; color: #555; }
+    .error { background: #f8d7da; border: 1px solid #dc3545; border-radius: 8px;
+             padding: 12px 16px; color: #721c24; font-size: 0.875rem; display: none; margin-bottom: 16px; }
   </style>
 </head>
 <body>
+<div class="container">
 
-<h1>⚡ Induction Motor Health Assessment AI</h1>
-<p style="color:#666; margin-top:-10px;">IS 900 · IEEE 43 · IS 12075</p>
-
-<div class="card">
-  <label>Motor Voltage</label>
-  <select id="voltage">
-    <option value="0.415">415V (Low Tension)</option>
-    <option value="6.6">6.6kV (High Tension)</option>
-  </select>
-
-  <label>IR @ 1 Minute (MΩ)</label>
-  <input type="number" id="ir_1min" placeholder="e.g. 2.5" step="0.01" />
-
-  <label>IR @ 10 Minutes (MΩ)</label>
-  <input type="number" id="ir_10min" placeholder="e.g. 3.8" step="0.01" />
-
-  <label>DC Winding Resistance (Ω)</label>
-  <input type="number" id="dc_resistance" placeholder="e.g. 0.051" step="0.001" />
-
-  <label>Vibration (mm/sec)</label>
-  <input type="number" id="vibration" placeholder="e.g. 1.8" step="0.1" />
-
-  <button onclick="runAssessment()">⚡ Run AI Health Assessment</button>
-</div>
-
-<div id="loader">⏳ Analysing motor data, please wait...</div>
-
-<div id="results">
-  <div class="overall" id="overallBanner"></div>
+  <h1>⚡ Induction Motor Health Assessment AI</h1>
+  <p class="subtitle">IS 900 · IEEE 43 · IS 12075 · Powered by Gemini AI + MCP Agent</p>
 
   <div class="card">
-    <h3>Standards Check Results</h3>
-    <div id="checksGrid"></div>
+    <div class="grid">
+      <div>
+        <label>Motor Voltage</label>
+        <select id="voltage">
+          <option value="0.415">415V — Low Tension (LT)</option>
+          <option value="6.6">6.6kV — High Tension (HT)</option>
+        </select>
+        <p class="hint">Determines IR threshold per IS 900</p>
+      </div>
+      <div>
+        <label>IR @ 1 Minute (MΩ)</label>
+        <input type="number" id="ir_1min" placeholder="e.g. 2.5" step="0.01" min="0"/>
+        <p class="hint">Min 1.5 MΩ (415V) / 6.5 MΩ (6.6kV)</p>
+      </div>
+      <div>
+        <label>IR @ 10 Minutes (MΩ)</label>
+        <input type="number" id="ir_10min" placeholder="e.g. 3.8" step="0.01" min="0"/>
+        <p class="hint">Same threshold; used to calculate PI</p>
+      </div>
+      <div>
+        <label>DC Winding Resistance (Ω)</label>
+        <input type="number" id="dc_resistance" placeholder="e.g. 0.051" step="0.001" min="0"/>
+        <p class="hint">Design = 0.05 Ω ±10% (0.045–0.055 Ω)</p>
+      </div>
+      <div>
+        <label>Vibration (mm/sec)</label>
+        <input type="number" id="vibration" placeholder="e.g. 1.8" step="0.1" min="0"/>
+        <p class="hint">Must be less than 3.0 mm/sec</p>
+      </div>
+    </div>
+    <button class="btn" onclick="runAssessment()" id="btn">⚡ Run AI Health Assessment</button>
   </div>
 
-  <div class="card">
-    <h3>🤖 AI Diagnostic Report</h3>
-    <div id="aiReport"></div>
+  <div class="error" id="errorBox"></div>
+
+  <div class="loader-wrap" id="loader">
+    <div class="spinner"></div>
+    <div class="loader-steps">
+      <span id="s1">🔧 Step 1: Running IS 900 / IEEE 43 standards checks via MCP...</span>
+      <span id="s2">📊 Step 2: Calculating PI and evaluating all 5 parameters...</span>
+      <span id="s3">🤖 Step 3: Gemini AI agent analysing your specific motor readings...</span>
+      <span id="s4">📝 Step 4: Generating personalised diagnostic report...</span>
+    </div>
   </div>
+
+  <div id="results">
+    <div class="banner" id="banner">
+      <div class="banner-icon" id="bannerIcon"></div>
+      <div>
+        <div class="banner-title" id="bannerTitle"></div>
+        <div class="banner-msg" id="bannerMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:14px;color:#1a1a2e;">Standards Check Results</h3>
+      <div class="checks" id="checks"></div>
+    </div>
+
+    <div class="card">
+      <div class="ai-header">
+        <h3>🤖 AI Diagnostic Report</h3>
+        <span class="ai-badge">Gemini AI + MCP Agent</span>
+      </div>
+      <div class="ai-report" id="aiReport"></div>
+    </div>
+  </div>
+
 </div>
-
 <script>
-async function runAssessment() {
-  const ir_1min       = document.getElementById('ir_1min').value;
-  const ir_10min      = document.getElementById('ir_10min').value;
-  const dc_resistance = document.getElementById('dc_resistance').value;
-  const vibration     = document.getElementById('vibration').value;
-  const voltage_kv    = document.getElementById('voltage').value;
+let stepIndex = 0;
+let stepTimer;
 
-  if (!ir_1min || !ir_10min || !dc_resistance || !vibration) {
-    alert('Please fill in all fields.');
-    return;
+function startSteps() {
+  const steps = ['s1','s2','s3','s4'];
+  stepIndex = 0;
+  steps.forEach(s => document.getElementById(s).className = '');
+  document.getElementById(steps[0]).className = 'active';
+  stepTimer = setInterval(() => {
+    stepIndex++;
+    if (stepIndex < steps.length) {
+      steps.forEach(s => document.getElementById(s).className = '');
+      document.getElementById(steps[stepIndex]).className = 'active';
+    }
+  }, 3000);
+}
+
+function stopSteps() { clearInterval(stepTimer); }
+
+async function runAssessment() {
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('errorBox');
+  err.style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+
+  const v  = document.getElementById('voltage').value;
+  const i1 = document.getElementById('ir_1min').value;
+  const i10= document.getElementById('ir_10min').value;
+  const dc = document.getElementById('dc_resistance').value;
+  const vib= document.getElementById('vibration').value;
+
+  if (!i1 || !i10 || !dc || !vib) {
+    err.textContent = 'Please fill in all 5 fields before running the assessment.';
+    err.style.display = 'block'; return;
   }
 
-  document.getElementById('loader').style.display  = 'block';
-  document.getElementById('results').style.display = 'none';
+  btn.disabled = true;
+  document.getElementById('loader').style.display = 'block';
+  startSteps();
 
   try {
     const resp = await fetch('/assess', {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ voltage_kv, ir_1min, ir_10min, dc_resistance, vibration })
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({voltage_kv:v, ir_1min:i1, ir_10min:i10, dc_resistance:dc, vibration:vib})
     });
     const data = await resp.json();
-    if (!data.success) throw new Error(data.error);
-    renderResults(data.results, data.ai_report);
+    if (!data.success) throw new Error(data.error + (data.trace ? '\n\n' + data.trace : ''));
+    render(data.results, data.ai_report);
   } catch(e) {
-    alert('Error: ' + e.message);
+    err.textContent = 'Error: ' + e.message;
+    err.style.display = 'block';
   } finally {
+    btn.disabled = false;
     document.getElementById('loader').style.display = 'none';
+    stopSteps();
   }
 }
 
-function renderResults(r, aiText) {
-  const status = r.overall.status;
-  const banner = document.getElementById('overallBanner');
-  banner.textContent = status + ' — ' + r.overall.message;
-  banner.className   = 'overall ' +
-    (status.includes('HEALTHY') ? 'healthy' : status.includes('MARGINAL') ? 'marginal' : 'critical');
+function render(r, aiText) {
+  const st = r.overall.status;
+  const banner = document.getElementById('banner');
+  banner.className = 'banner ' + (st.includes('HEALTHY')?'healthy':st.includes('MARGINAL')?'marginal':'critical');
+  document.getElementById('bannerIcon').textContent = st.includes('HEALTHY')?'✅':st.includes('MARGINAL')?'⚠️':'❌';
+  document.getElementById('bannerTitle').textContent = st;
+  document.getElementById('bannerMsg').textContent = r.overall.message;
 
-  const grid = document.getElementById('checksGrid');
+  const grid = document.getElementById('checks');
   grid.innerHTML = '';
   ['check1','check2','check3','check4','check5'].forEach(k => {
-    const c   = r[k];
-    const cls = c.status === 'PASS' ? 'pass-card' : 'fail-card';
-    const badge = c.status === 'PASS'
-      ? '<span class="pass">✅ PASS</span>'
-      : '<span class="fail">❌ FAIL</span>';
+    const c = r[k];
+    const cls = c.status==='PASS'?'pass':'fail';
+    let extra = '';
+    if (k==='check3') {
+      const colors = {DANGEROUS:'#721c24',QUESTIONABLE:'#856404',FAIR:'#555',GOOD:'#155724',EXCELLENT:'#0a3d0a'};
+      extra = `<div class="pi-tag" style="color:${colors[c.pi_condition]||'#555'}">PI Condition: ${c.pi_condition}</div>`;
+    }
     grid.innerHTML += `
       <div class="check ${cls}">
-        <b>${c.name}</b> ${badge}<br>
-        Measured: <b>${c.measured} ${c.unit}</b> &nbsp;|&nbsp; Limit: ${c.limit}
-        ${c.pi_condition ? '<br>PI Condition: <b>' + c.pi_condition + '</b>' : ''}
+        <div class="check-name">${c.name}</div>
+        <div class="check-row">
+          <span class="check-val">${c.measured} ${c.unit}</span>
+          <span class="badge ${cls}">${c.status}</span>
+        </div>
+        <div class="check-limit">Limit: ${c.limit}</div>
+        ${extra}
       </div>`;
   });
 
   document.getElementById('aiReport').textContent = aiText;
   document.getElementById('results').style.display = 'block';
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('results').scrollIntoView({behavior:'smooth'});
 }
 </script>
 </body>

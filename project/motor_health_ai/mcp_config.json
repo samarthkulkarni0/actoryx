@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "motor-health-assessment": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "cwd": "C:\\Users\\kdrsr\\OneDrive\\Desktop\\actoryx\\project\\motor_health_ai"
+    }
+  }
+}
